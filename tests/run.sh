@@ -263,7 +263,11 @@ MOCK_CURL_RESPONSE="$ROOT/tests/fixtures/telegram-ok.json"
 export MOCK_CURL_RESPONSE
 MOCK_API_BASE_URL='https://api.telegram.org'
 
-wol_reset_confirmation_state
+assert_true 'empty confirmation state resets successfully' wol_reset_confirmation_state
+stale_confirmation="$TGBOT_CONFIRM_DIR/stale-confirmation"
+printf '%s\n' stale >"$stale_confirmation"
+assert_true 'populated confirmation state resets successfully' wol_reset_confirmation_state
+assert_false 'confirmation reset removes stale files' test -e "$stale_confirmation"
 nonce=$(wol_create_confirmation 123456789 123456789 cfg001)
 assert_false 'confirmation is bound to its administrator' wol_consume_confirmation "$nonce" 999 123456789
 nonce=$(wol_create_confirmation 123456789 123456789 cfg001)

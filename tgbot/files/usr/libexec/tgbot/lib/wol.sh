@@ -13,8 +13,9 @@ wol_reset_confirmation_state() {
 	mkdir -p "$TGBOT_CONFIRM_DIR" || return 1
 	chmod 700 "$TGBOT_CONFIRM_DIR" 2>/dev/null || true
 	for file in "$TGBOT_CONFIRM_DIR"/*; do
-		[ -f "$file" ] && rm -f "$file"
+		[ ! -f "$file" ] || rm -f "$file" || return 1
 	done
+	return 0
 }
 
 _wol_add_target_button() {

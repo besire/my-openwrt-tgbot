@@ -78,7 +78,7 @@
 
 ## Current Verification Status
 
-- 71 regression tests pass with the host `sh` and with BusyBox `ash` plus
+- 74 regression tests pass with the host `sh` and with BusyBox `ash` plus
   BusyBox applets.
 - ShellCheck, LuCI JavaScript syntax, JSON manifests, translation/catalog
   checks, and package layout checks pass.
