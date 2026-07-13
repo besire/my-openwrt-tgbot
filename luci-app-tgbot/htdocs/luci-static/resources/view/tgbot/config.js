@@ -57,6 +57,8 @@ return view.extend({
 	},
 
 	validateAdminId(sectionId, value) {
+		if (value == null || value === '')
+			return true;
 		return /^[1-9][0-9]{0,19}$/.test(value)
 			? true : _('Enter a positive numeric Telegram user ID.');
 	},

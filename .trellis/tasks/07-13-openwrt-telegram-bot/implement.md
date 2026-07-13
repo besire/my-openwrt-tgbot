@@ -105,6 +105,7 @@ shellcheck tgbot/files/etc/init.d/tgbot \
   tgbot/files/usr/libexec/tgbot/validate \
   tgbot/files/usr/libexec/tgbot/lib/*.sh tests/*.sh tests/mocks/*
 node --check luci-app-tgbot/htdocs/luci-static/resources/view/tgbot/config.js
+node tests/luci-validation.test.js
 jq empty luci-app-tgbot/root/usr/share/luci/menu.d/luci-app-tgbot.json
 jq empty luci-app-tgbot/root/usr/share/rpcd/acl.d/luci-app-tgbot.json
 ```

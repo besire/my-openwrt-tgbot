@@ -88,3 +88,80 @@ handleApply() {
 
 The fixed helper then owns the authoritative `uci commit tgbot` and ordered
 service transition.
+
+## Scenario: Validate LuCI Dynamic Lists
+
+### 1. Scope / Trigger
+
+- Trigger: assigning a custom `validate(sectionId, value)` function to a
+  `form.DynamicList` option.
+- LuCI validates both the text input used to add an item and the list's root
+  container, so the callback does not always represent a stored list item.
+
+### 2. Signatures
+
+- Option: `form.DynamicList`.
+- Callback: `validate(sectionId: string, value: string) -> true | string`.
+- Observed LuCI 24.10 and 25.12 calls:
+  - Item input validation: `value` is the entered item string.
+  - Root-container revalidation: `value` is the empty-string sentinel `''`.
+
+### 3. Contracts
+
+- A custom DynamicList validator must accept `null` and `''` as framework
+  sentinels. Required-list checks belong to the form state or authoritative
+  backend validation, not the per-item callback.
+- Every nonempty value must be validated as one list item. For `admin_id`, the
+  accepted shape is `/^[1-9][0-9]{0,19}$/`.
+- Accepting the empty sentinel must not weaken backend validation. Strict shell
+  validation still requires at least one administrator before enabling or
+  testing the bot.
+
+### 4. Validation & Error Matrix
+
+| Value / state | Required result |
+| --- | --- |
+| `''` or `null` from container revalidation | Return `true` |
+| `1083075748` | Return `true` |
+| `0` or a leading-zero ID | Return the field-specific error |
+| Username, token, whitespace, or nondigit input | Return the field-specific error |
+| More than 20 digits | Return the field-specific error |
+| Enabled bot with no stored administrator IDs | Backend strict validation fails |
+
+### 5. Good / Base / Bad Cases
+
+- Good: a valid ID is added, the container revalidates with `''`, and the form
+  saves the stored list value.
+- Base: the optional list is empty while the bot is disabled; the form remains
+  editable and the service stays stopped.
+- Bad: applying the item regex directly to `''`, which marks the entire list
+  invalid after a valid item was added.
+
+### 6. Tests Required
+
+- Load the actual LuCI view model and assert the validator accepts both the
+  empty container sentinel and a representative valid ID.
+- Assert zero, leading-zero, nondigit, and 21-digit values remain invalid.
+- Run `node --check` on the view and `node tests/luci-validation.test.js`.
+- On the target router, add a valid ID through the DynamicList control, save,
+  reload, and verify the value persists.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```javascript
+validateAdminId(sectionId, value) {
+	return /^[1-9][0-9]{0,19}$/.test(value) ? true : _('Invalid ID');
+}
+```
+
+#### Correct
+
+```javascript
+validateAdminId(sectionId, value) {
+	if (value == null || value === '')
+		return true;
+	return /^[1-9][0-9]{0,19}$/.test(value) ? true : _('Invalid ID');
+}
+```
