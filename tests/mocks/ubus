@@ -1,0 +1,8 @@
+#!/bin/sh
+
+case "$1 $2 ${3:-}" in
+	'call system board') cat "$MOCK_FIXTURE_DIR/board.json" ;;
+	'call network.interface.wan status') cat "$MOCK_FIXTURE_DIR/wan.json" ;;
+	'call network.interface.wan6 status') cat "$MOCK_FIXTURE_DIR/wan6.json" ;;
+	*) exit 1 ;;
+esac

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+printf '%s\n' "$*" >"$MOCK_CURL_ARGV_LOG"
+config=$(mktemp)
+cat >"$config"
+cp "$config" "$MOCK_CURL_CONFIG_LOG"
+output=$(sed -n 's/^output = "\(.*\)"$/\1/p' "$config")
+rm -f "$config"
+cp "$MOCK_CURL_RESPONSE" "$output"
+printf '%s' "${MOCK_CURL_HTTP_CODE:-200}"

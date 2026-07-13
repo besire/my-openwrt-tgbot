@@ -1,0 +1,141 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# shellcheck disable=SC2034,SC3043
+
+LIB_DIR=${TGBOT_LIB_DIR:-/usr/libexec/tgbot/lib}
+# shellcheck source=/dev/null
+. "$LIB_DIR/common.sh"
+# shellcheck source=/dev/null
+. "$LIB_DIR/telegram.sh"
+# shellcheck source=/dev/null
+. "$LIB_DIR/status.sh"
+# shellcheck source=/dev/null
+. "$LIB_DIR/wol.sh"
+
+TGBOT_RUNTIME_DIR=${TGBOT_RUNTIME_DIR:-/tmp/tgbot}
+TGBOT_OFFSET_FILE=${TGBOT_OFFSET_FILE:-$TGBOT_RUNTIME_DIR/offset}
+TGBOT_SLEEP_BIN=${TGBOT_SLEEP_BIN:-sleep}
+
+tgbot_prepare_runtime() {
+	umask 077
+	mkdir -p "$TGBOT_RUNTIME_DIR" || return 1
+	chmod 700 "$TGBOT_RUNTIME_DIR" 2>/dev/null || true
+	wol_reset_confirmation_state
+}
+
+tgbot_read_offset() {
+	local offset
+	[ -r "$TGBOT_OFFSET_FILE" ] || return 1
+	IFS= read -r offset <"$TGBOT_OFFSET_FILE" || return 1
+	case "$offset" in ''|*[!0-9]*) return 1 ;; esac
+	printf '%s\n' "$offset"
+}
+
+tgbot_write_offset() {
+	local offset="$1" temporary="$TGBOT_OFFSET_FILE.$$"
+	case "$offset" in ''|*[!0-9]*) return 1 ;; esac
+	printf '%s\n' "$offset" >"$temporary" || return 1
+	mv "$temporary" "$TGBOT_OFFSET_FILE"
+}
+
+tgbot_send_help() {
+	telegram_send_text "$1" '可用命令：
+/status - 查看路由器状态
+/wol - 选择并唤醒已配置设备
+/help - 显示帮助'
+}
+
+tgbot_dispatch_message() {
+	local command="${TGBOT_MESSAGE_TEXT%%[[:space:]]*}"
+	case "$command" in
+		/start|/help) tgbot_send_help "$TGBOT_CHAT_ID" ;;
+		/status)
+			if tgbot_collect_status; then
+				telegram_send_text "$TGBOT_CHAT_ID" "$TGBOT_STATUS_TEXT"
+			else
+				telegram_send_text "$TGBOT_CHAT_ID" '无法读取路由器状态。'
+			fi
+			;;
+		/wol) wol_send_target_keyboard "$TGBOT_CHAT_ID" ;;
+		'') return 0 ;;
+		*) telegram_send_text "$TGBOT_CHAT_ID" '未知命令，请使用 /help。' ;;
+	esac
+}
+
+tgbot_dispatch_update() {
+	if [ "$TGBOT_CHAT_TYPE" != private ] || ! tgbot_is_admin "$TGBOT_USER_ID"; then
+		tgbot_log notice "ignored unauthorized update $TGBOT_UPDATE_ID"
+		return 0
+	fi
+	case "$TGBOT_UPDATE_KIND" in
+		message) tgbot_dispatch_message ;;
+		callback) wol_handle_callback "$TGBOT_CALLBACK_ID" "$TGBOT_CALLBACK_DATA" "$TGBOT_USER_ID" "$TGBOT_CHAT_ID" ;;
+	esac
+}
+
+tgbot_backoff_next() {
+	local value="$1"
+	value=$((value * 2))
+	[ "$value" -le 60 ] || value=60
+	printf '%s\n' "$value"
+}
+
+tgbot_main() {
+	local offset response decode_rc next_offset backoff=1 discard_backlog=0 running=1
+
+	tgbot_prepare_runtime || return 1
+	tgbot_load_config || return 1
+	if ! tgbot_validate_config strict; then
+		tgbot_log err 'configuration validation failed'
+		return 1
+	fi
+
+	if ! offset=$(tgbot_read_offset); then
+		offset=-1
+		discard_backlog=1
+	fi
+	trap 'running=0' INT TERM
+	tgbot_log notice 'service started'
+
+	while [ "$running" -eq 1 ]; do
+		response=$(telegram_new_response_file) || return 1
+		if ! telegram_poll "$offset" "$TGBOT_POLL_TIMEOUT" "$response"; then
+			rm -f "$response"
+			tgbot_log warning 'Telegram polling failed; retrying with backoff'
+			"$TGBOT_SLEEP_BIN" "$backoff"
+			backoff=$(tgbot_backoff_next "$backoff")
+			continue
+		fi
+		backoff=1
+		telegram_decode_update "$response"
+		decode_rc=$?
+		rm -f "$response"
+
+		if [ "$decode_rc" -eq 2 ]; then
+			if [ "$discard_backlog" -eq 1 ]; then
+				offset=0
+				tgbot_write_offset "$offset" || return 1
+				discard_backlog=0
+			fi
+			continue
+		fi
+		[ "$decode_rc" -eq 0 ] || {
+			tgbot_log warning 'ignored malformed Telegram update'
+			continue
+		}
+
+		next_offset=$((TGBOT_UPDATE_ID + 1))
+		tgbot_write_offset "$next_offset" || return 1
+		offset=$next_offset
+		if [ "$discard_backlog" -eq 1 ]; then
+			discard_backlog=0
+			continue
+		fi
+		tgbot_dispatch_update || tgbot_log warning "update $TGBOT_UPDATE_ID failed"
+	done
+	tgbot_log notice 'service stopped'
+}
+
+if [ "${TGBOT_SOURCE_ONLY:-0}" != 1 ]; then
+	tgbot_main "$@"
+fi

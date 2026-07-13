@@ -1,0 +1,48 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+
+LIB_DIR=${TGBOT_LIB_DIR:-/usr/libexec/tgbot/lib}
+INIT_SCRIPT=${TGBOT_INIT_SCRIPT:-/etc/init.d/tgbot}
+UCI_BIN=${TGBOT_UCI_BIN:-uci}
+# shellcheck source=/dev/null
+. "$LIB_DIR/common.sh"
+
+tgbot_load_config || {
+	printf '%s\n' 'Unable to load tgbot configuration.'
+	exit 1
+}
+
+if [ "$TGBOT_ENABLED" -ne 1 ]; then
+	rc=0
+	"$INIT_SCRIPT" stop >/dev/null 2>&1 || true
+	if ! "$UCI_BIN" commit tgbot >/dev/null 2>&1; then
+		printf '%s\n' 'Unable to commit the tgbot configuration.'
+		rc=1
+	fi
+	if ! "$INIT_SCRIPT" disable >/dev/null 2>&1; then
+		printf '%s\n' 'Unable to disable the tgbot service.'
+		rc=1
+	fi
+	[ "$rc" -eq 0 ] || exit 1
+	printf '%s\n' 'tgbot stopped and disabled.'
+	exit 0
+fi
+
+if ! tgbot_validate_config strict; then
+	tgbot_print_validation_errors
+	exit 1
+fi
+if ! "$UCI_BIN" commit tgbot >/dev/null 2>&1; then
+	printf '%s\n' 'Unable to commit the tgbot configuration.'
+	exit 1
+fi
+if ! "$INIT_SCRIPT" enable >/dev/null 2>&1; then
+	printf '%s\n' 'Unable to enable the tgbot service.'
+	exit 1
+fi
+if ! "$INIT_SCRIPT" restart >/dev/null 2>&1; then
+	printf '%s\n' 'Unable to restart the tgbot service.'
+	exit 1
+fi
+
+printf '%s\n' 'tgbot enabled and restarted.'

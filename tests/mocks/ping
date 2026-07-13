@@ -1,0 +1,4 @@
+#!/bin/sh
+
+printf '%s\n' "$*" >>"$MOCK_PING_LOG"
+exit "${MOCK_PING_EXIT:-0}"

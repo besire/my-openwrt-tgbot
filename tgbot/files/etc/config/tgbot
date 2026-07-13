@@ -1,0 +1,21 @@
+config bot 'main'
+	option enabled '0'
+	option token ''
+	option api_base_url 'https://api.telegram.org'
+	list status_interface 'wan'
+	list status_interface 'wan6'
+	option poll_timeout '50'
+	option wake_check_delay '5'
+	option wake_check_attempts '6'
+	option wake_check_interval '5'
+
+# Add one or more Telegram numeric user IDs before enabling the service.
+#	list admin_id '123456789'
+
+# WOL targets are anonymous device sections. check_ip is optional.
+# config device
+#	option enabled '1'
+#	option name 'NAS'
+#	option mac '00:11:22:33:44:55'
+#	option interface 'br-lan'
+#	option check_ip '192.168.1.10'

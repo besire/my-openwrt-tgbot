@@ -1,0 +1,14 @@
+{
+	"admin/services/tgbot": {
+		"title": "Telegram Bot",
+		"order": 80,
+		"action": {
+			"type": "view",
+			"path": "tgbot/config"
+		},
+		"depends": {
+			"acl": [ "luci-app-tgbot" ],
+			"uci": { "tgbot": true }
+		}
+	}
+}

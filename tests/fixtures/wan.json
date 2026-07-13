@@ -1,0 +1,12 @@
+{
+  "up": true,
+  "ipv4-address": [
+    { "address": "198.51.100.10", "mask": 24 }
+  ],
+	"ipv6-address": [
+		{
+			"address": "2001:db8::10",
+			"mask": 64
+		}
+	]
+}

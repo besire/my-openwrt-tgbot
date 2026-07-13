@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "result": {
+    "id": 123456,
+    "is_bot": true,
+    "username": "openwrt_test_bot"
+  }
+}

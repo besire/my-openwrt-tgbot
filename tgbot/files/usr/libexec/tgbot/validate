@@ -1,0 +1,21 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+
+LIB_DIR=${TGBOT_LIB_DIR:-/usr/libexec/tgbot/lib}
+# shellcheck source=/dev/null
+. "$LIB_DIR/common.sh"
+
+mode=normal
+[ "${1:-}" = '--strict' ] && mode=strict
+
+if ! tgbot_load_config; then
+	printf '%s\n' 'unable to load /etc/config/tgbot' >&2
+	exit 1
+fi
+
+if ! tgbot_validate_config "$mode"; then
+	tgbot_print_validation_errors >&2
+	exit 1
+fi
+
+printf '%s\n' 'configuration is valid'

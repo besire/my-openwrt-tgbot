@@ -1,0 +1,35 @@
+#!/bin/sh
+
+input=
+expression=
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+		-i) input=$2; shift 2 ;;
+		-e) expression=$2; shift 2 ;;
+		*) shift ;;
+	esac
+done
+
+case "$expression" in
+	'@.ok') filter='if .ok == null then empty else .ok end' ;;
+	'@.result.username') filter='.result.username // empty' ;;
+	'@.result[0].update_id') filter='.result[0].update_id // empty' ;;
+	'@.result[0].callback_query.id') filter='.result[0].callback_query.id // empty' ;;
+	'@.result[0].callback_query.from.id') filter='.result[0].callback_query.from.id // empty' ;;
+	'@.result[0].callback_query.message.chat.id') filter='.result[0].callback_query.message.chat.id // empty' ;;
+	'@.result[0].callback_query.message.chat.type') filter='.result[0].callback_query.message.chat.type // empty' ;;
+	'@.result[0].callback_query.data') filter='.result[0].callback_query.data // empty' ;;
+	'@.result[0].message.from.id') filter='.result[0].message.from.id // empty' ;;
+	'@.result[0].message.chat.id') filter='.result[0].message.chat.id // empty' ;;
+	'@.result[0].message.chat.type') filter='.result[0].message.chat.type // empty' ;;
+	'@.result[0].message.text') filter='.result[0].message.text // empty' ;;
+	'@.hostname') filter='.hostname // empty' ;;
+	'@.model') filter='.model // empty' ;;
+	'@.release.description') filter='.release.description // empty' ;;
+	'@.up') filter='if .up == null then empty else .up end' ;;
+	"@['ipv4-address'][*].address") filter='.["ipv4-address"][]?.address // empty' ;;
+	"@['ipv6-address'][*].address") filter='.["ipv6-address"][]?.address // empty' ;;
+	*) exit 1 ;;
+esac
+
+jq -r "$filter" "$input"

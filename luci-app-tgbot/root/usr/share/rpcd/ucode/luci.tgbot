@@ -1,0 +1,43 @@
+#!/usr/bin/ucode
+// SPDX-License-Identifier: Apache-2.0
+
+'use strict';
+
+import { popen } from 'fs';
+
+function run(command) {
+	const stream = popen(command);
+	let output = stream.read('all') || '';
+	const code = stream.close();
+
+	if (length(output) > 2048)
+		output = substr(output, 0, 2048);
+
+	return {
+		code: code,
+		output: output
+	};
+}
+
+const methods = {
+	status: {
+		call: function() {
+			const result = run('/etc/init.d/tgbot running');
+			return { running: result.code == 0 };
+		}
+	},
+
+	test: {
+		call: function() {
+			return run('/usr/libexec/tgbot/test-api 2>&1');
+		}
+	},
+
+	apply: {
+		call: function() {
+			return run('/usr/libexec/tgbot/apply 2>&1');
+		}
+	}
+};
+
+return { 'luci.tgbot': methods };

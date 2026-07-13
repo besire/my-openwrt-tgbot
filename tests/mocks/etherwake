@@ -1,0 +1,4 @@
+#!/bin/sh
+
+printf '%s\n' "$*" >>"$MOCK_ETHERWAKE_LOG"
+exit "${MOCK_ETHERWAKE_EXIT:-0}"

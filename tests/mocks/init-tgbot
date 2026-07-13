@@ -1,0 +1,11 @@
+#!/bin/sh
+
+printf '%s\n' "$1" >>"$MOCK_INIT_LOG"
+
+case "$1" in
+	enable) exit "${MOCK_INIT_ENABLE_EXIT:-0}" ;;
+	restart) exit "${MOCK_INIT_RESTART_EXIT:-0}" ;;
+	disable) exit "${MOCK_INIT_DISABLE_EXIT:-0}" ;;
+	stop) exit "${MOCK_INIT_STOP_EXIT:-0}" ;;
+	*) exit 1 ;;
+esac

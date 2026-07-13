@@ -1,0 +1,4 @@
+#!/bin/sh
+
+printf '%s\n' "$*" >>"$MOCK_UCI_LOG"
+exit "${MOCK_UCI_EXIT:-0}"

@@ -1,0 +1,19 @@
+{
+	"luci-app-tgbot": {
+		"description": "Grant access to the OpenWrt Telegram bot configuration",
+		"read": {
+			"ubus": {
+				"luci.tgbot": [ "status" ],
+				"luci-rpc": [ "getNetworkDevices" ]
+			},
+			"uci": [ "tgbot" ]
+		},
+		"write": {
+			"ubus": {
+				"luci.tgbot": [ "apply", "test" ],
+				"uci": [ "add", "set", "delete", "order" ]
+			},
+			"uci": [ "tgbot" ]
+		}
+	}
+}

@@ -1,0 +1,128 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-tgbot\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Telegram Bot"
+msgstr "Telegram 机器人"
+
+msgid "Configure private Telegram access to router status and Wake-on-LAN."
+msgstr "配置通过 Telegram 私聊查看路由器状态并使用网络唤醒。"
+
+msgid "Service"
+msgstr "服务"
+
+msgid "Service status"
+msgstr "服务状态"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "API connection"
+msgstr "API 连接"
+
+msgid "Test connection"
+msgstr "测试连接"
+
+msgid "Apply service state"
+msgstr "应用服务状态"
+
+msgid "Save and apply"
+msgstr "保存并应用"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Bot token"
+msgstr "机器人 Token"
+
+msgid "Telegram API base URL"
+msgstr "Telegram API 基础地址"
+
+msgid "The endpoint must preserve the standard /bot&lt;TOKEN&gt;/&lt;METHOD&gt; path layout."
+msgstr "该端点必须保留标准的 /bot&lt;TOKEN&gt;/&lt;METHOD&gt; 路径结构。"
+
+msgid "Administrator user IDs"
+msgstr "管理员用户 ID"
+
+msgid "Only private chats from these exact numeric Telegram user IDs are accepted."
+msgstr "仅接受来自这些精确 Telegram 数字用户 ID 的私聊。"
+
+msgid "Long polling timeout"
+msgstr "长轮询超时"
+
+msgid "Status and reachability"
+msgstr "状态与可达性"
+
+msgid "Status network interfaces"
+msgstr "状态查询网络接口"
+
+msgid "UCI network names queried by the /status command."
+msgstr "/status 命令查询的 UCI 网络名称。"
+
+msgid "Initial reachability delay"
+msgstr "首次可达性检测延迟"
+
+msgid "Reachability attempts"
+msgstr "可达性检测次数"
+
+msgid "Reachability interval"
+msgstr "可达性检测间隔"
+
+msgid "Wake-on-LAN devices"
+msgstr "网络唤醒设备"
+
+msgid "Every wake request requires a fresh Telegram confirmation."
+msgstr "每次唤醒请求都需要新的 Telegram 确认。"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "MAC address"
+msgstr "MAC 地址"
+
+msgid "Interface"
+msgstr "接口"
+
+msgid "Reachability IPv4 address"
+msgstr "可达性检测 IPv4 地址"
+
+msgid "Optional address checked after the magic packet is sent."
+msgstr "发送魔术包后检测的可选地址。"
+
+msgid "Add device"
+msgstr "添加设备"
+
+msgid "Edit device: %s"
+msgstr "编辑设备：%s"
+
+msgid "A bot token is required while the service is enabled."
+msgstr "启用服务时必须填写机器人 Token。"
+
+msgid "Enter a valid Telegram bot token."
+msgstr "请输入有效的 Telegram 机器人 Token。"
+
+msgid "Enter an HTTPS Telegram Bot API base URL."
+msgstr "请输入 HTTPS Telegram Bot API 基础地址。"
+
+msgid "The API URL must not contain whitespace, query, fragment, quote, or backslash characters."
+msgstr "API 地址不能包含空白、查询、片段、引号或反斜杠字符。"
+
+msgid "The API URL authority is invalid."
+msgstr "API 地址的 authority 无效。"
+
+msgid "Enter a positive numeric Telegram user ID."
+msgstr "请输入正数形式的 Telegram 用户 ID。"
+
+msgid "Enter a device name up to 48 bytes without control characters."
+msgstr "请输入不超过 48 字节且不含控制字符的设备名称。"
+
+msgid "Device names must be unique."
+msgstr "设备名称必须唯一。"
+
+msgid "No response."
+msgstr "没有响应。"
