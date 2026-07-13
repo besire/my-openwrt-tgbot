@@ -11,19 +11,19 @@ return view.extend({
 	callStatus: rpc.declare({
 		object: 'luci.tgbot',
 		method: 'status',
-		expect: { running: false }
+		expect: { '': { running: false } }
 	}),
 
 	callTest: rpc.declare({
 		object: 'luci.tgbot',
 		method: 'test',
-		expect: { code: 1, output: '' }
+		expect: { '': { code: 1, output: '' } }
 	}),
 
 	callApply: rpc.declare({
 		object: 'luci.tgbot',
 		method: 'apply',
-		expect: { code: 1, output: '' }
+		expect: { '': { code: 1, output: '' } }
 	}),
 
 	load() {

@@ -165,3 +165,81 @@ validateAdminId(sectionId, value) {
 	return /^[1-9][0-9]{0,19}$/.test(value) ? true : _('Invalid ID');
 }
 ```
+
+## Scenario: Preserve LuCI RPC Result Objects
+
+### 1. Scope / Trigger
+
+- Trigger: a LuCI `rpc.declare()` call consumes two or more fields from one
+  `ubus` reply object, or a caller otherwise expects to receive the complete
+  reply object.
+- This contract prevents the RPC adapter from selecting one scalar field while
+  the view still tries to read properties from an object.
+
+### 2. Signatures
+
+- `luci.tgbot.status()` returns `{ running: boolean }`.
+- `luci.tgbot.test()` and `luci.tgbot.apply()` return
+  `{ code: integer, output: string }`.
+- Corresponding LuCI declarations use
+  `expect: { '': <complete-default-object> }`.
+
+### 3. Contracts
+
+- In LuCI RPC, a nonempty `expect` key selects that one field and returns its
+  value. It does not validate an object containing all listed keys.
+- The empty key `''` selects and type-checks the entire reply object.
+- A handler that reads `result.code` and `result.output` must receive the whole
+  object; a status consumer that reads `status.running` has the same rule.
+- Default objects must contain every field read by the consumer so malformed or
+  unavailable replies degrade to a deterministic UI state.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Status returns `{ running: true }` | View receives the object and displays Running |
+| Test returns `{ code: 0, output: "ok" }` | Notification displays `ok` as success |
+| Apply returns a nonzero code and diagnostic | Notification displays the diagnostic as an error |
+| RPC reply is absent or has the wrong type | Complete default object is returned |
+| Declaration uses `expect: { code: 1, output: '' }` | Reject in review; only `code` would be selected |
+
+### 5. Good / Base / Bad Cases
+
+- Good: the test button receives both fields and displays the backend's
+  Telegram connectivity result.
+- Base: an unavailable status call yields `{ running: false }` and displays
+  Stopped without throwing.
+- Bad: `expect: { running: false }` returns a boolean while the caller reads
+  `status.running`, causing a running service to remain displayed as stopped.
+
+### 6. Tests Required
+
+- Load the actual LuCI view and capture all `rpc.declare()` options.
+- Assert status, test, and apply declarations select the complete reply object
+  with the empty `expect` key.
+- Syntax-check the view under Node.js.
+- On a router, compare `ubus call luci.tgbot status/test/apply` with the status
+  label and notifications displayed by the same LuCI page.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```javascript
+callTest: rpc.declare({
+	object: 'luci.tgbot',
+	method: 'test',
+	expect: { code: 1, output: '' }
+})
+```
+
+#### Correct
+
+```javascript
+callTest: rpc.declare({
+	object: 'luci.tgbot',
+	method: 'test',
+	expect: { '': { code: 1, output: '' } }
+})
+```

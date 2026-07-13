@@ -6,11 +6,25 @@ const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'luci-app-tgbot',
 	'htdocs', 'luci-static', 'resources', 'view', 'tgbot', 'config.js'), 'utf8');
+const rpcDeclarations = [];
 const model = new Function('view', 'rpc', '_', source)(
 	{ extend: (definition) => definition },
-	{ declare: () => () => {} },
+	{ declare: (options) => {
+		rpcDeclarations.push(options);
+		return () => {};
+	} },
 	(message) => message
 );
+
+const rpcByMethod = Object.fromEntries(rpcDeclarations.map((options) =>
+	[ options.method, options ]));
+
+assert.deepEqual(rpcByMethod.status.expect, { '': { running: false } },
+	'status RPC must preserve its complete result object');
+assert.deepEqual(rpcByMethod.test.expect, { '': { code: 1, output: '' } },
+	'test RPC must preserve code and output in one result object');
+assert.deepEqual(rpcByMethod.apply.expect, { '': { code: 1, output: '' } },
+	'apply RPC must preserve code and output in one result object');
 
 assert.equal(model.validateAdminId('main', ''), true,
 	'DynamicList container validation must accept its empty sentinel');
@@ -27,4 +41,4 @@ assert.notEqual(model.validateAdminId('main', '1083x75748'), true,
 assert.notEqual(model.validateAdminId('main', '999999999999999999999'), true,
 	'a 21-digit Telegram user ID must be rejected');
 
-console.log('LuCI validation tests passed.');
+console.log('LuCI view tests passed.');
