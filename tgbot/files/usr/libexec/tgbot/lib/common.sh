@@ -5,6 +5,7 @@
 TGBOT_FUNCTIONS_SH=${TGBOT_FUNCTIONS_SH:-/lib/functions.sh}
 TGBOT_SYS_CLASS_NET=${TGBOT_SYS_CLASS_NET:-/sys/class/net}
 TGBOT_LOG_TAG=${TGBOT_LOG_TAG:-tgbot}
+TGBOT_PING_BIN=${TGBOT_PING_BIN:-ping}
 
 if ! command -v config_load >/dev/null 2>&1; then
 	# shellcheck source=/dev/null

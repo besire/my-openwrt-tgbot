@@ -27,8 +27,13 @@ case "$expression" in
 	'@.model') filter='.model // empty' ;;
 	'@.release.description') filter='.release.description // empty' ;;
 	'@.up') filter='if .up == null then empty else .up end' ;;
+	'@.proto') filter='.proto // empty' ;;
+	'@.l3_device') filter='.l3_device // empty' ;;
 	"@['ipv4-address'][*].address") filter='.["ipv4-address"][]?.address // empty' ;;
 	"@['ipv6-address'][*].address") filter='.["ipv6-address"][]?.address // empty' ;;
+	'@.route[@.target="0.0.0.0" && @.mask=0].nexthop') filter='.route[]? | select(.target == "0.0.0.0" and .mask == 0) | .nexthop // empty' ;;
+	'@.route[@.target="::" && @.mask=0].nexthop') filter='.route[]? | select(.target == "::" and .mask == 0) | .nexthop // empty' ;;
+	'@["dns-server"][*]') filter='.["dns-server"][]? // empty' ;;
 	*) exit 1 ;;
 esac
 

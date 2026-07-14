@@ -236,3 +236,76 @@ DEPENDS:=+ca-bundle +curl +etherwake
 ```make
 DEPENDS:=+ca-bundle +coreutils-od +curl +etherwake
 ```
+
+## Scenario: Synchronized Human-Readable Package Versions
+
+### 1. Scope / Trigger
+
+- Trigger: changing a release version shared by the core, LuCI, and generated
+  translation packages.
+- This contract prevents LuCI's default date/hash versions from diverging from
+  the core package's semantic version.
+
+### 2. Signatures
+
+- `tgbot/Makefile`: `PKG_VERSION:=<major>.<minor>.<patch>` and
+  `PKG_RELEASE:=<release>`.
+- `luci-app-tgbot/Makefile`: the same `PKG_VERSION` and `PKG_RELEASE`, plus
+  `PKG_PO_VERSION:=<major>.<minor>.<patch>-r<release>`.
+- Release metadata for all three packages: `<major>.<minor>.<patch>-r<release>`.
+
+### 3. Contracts
+
+- Core, LuCI, and translation packages expose one identical release version.
+- Do not leave LuCI's `PKG_VERSION` unset; `luci.mk` otherwise derives a
+  date/time/Git-hash version through `PKG_SRC_VERSION`.
+- Setting LuCI's `PKG_VERSION` is not enough for translations. Generated
+  `luci-i18n-*` packages use `PKG_PO_VERSION`, which must also be explicit.
+- A release bump changes the three declarations together before either SDK is
+  built.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Core and LuCI semantic versions differ | Reject release |
+| LuCI `PKG_VERSION` is absent | Reject generated date/hash application version |
+| `PKG_PO_VERSION` is absent | Reject generated date/hash translation version |
+| APK or IPK metadata differs across the three packages | Build verification fails |
+| All report the intended `x.y.z-rN` | Valid |
+
+### 5. Good / Base / Bad Cases
+
+- Good: all six APK/IPK artifacts report `0.2.0-r1`.
+- Base: a release-only rebuild increments `rN` consistently in both Makefiles
+  and in `PKG_PO_VERSION`.
+- Bad: core reports `0.2.0-r1` while LuCI or its translation retains a value
+  such as `26.194.66871~afee125`.
+
+### 6. Tests Required
+
+- Build `tgbot`, `luci-app-tgbot`, and `luci-i18n-tgbot-zh-cn` in APK and IPK
+  SDKs.
+- Inspect all six native metadata records and assert the exact common version.
+- Assert APK filenames use `name-x.y.z-rN.apk` and IPK filenames use
+  `name_x.y.z-rN_all.ipk`.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```make
+# luci-app-tgbot/Makefile
+include $(TOPDIR)/feeds/luci/luci.mk
+```
+
+#### Correct
+
+```make
+# luci-app-tgbot/Makefile
+PKG_VERSION:=0.2.0
+PKG_RELEASE:=1
+PKG_PO_VERSION:=0.2.0-r1
+
+include $(TOPDIR)/feeds/luci/luci.mk
+```

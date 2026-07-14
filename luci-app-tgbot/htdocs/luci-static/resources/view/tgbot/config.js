@@ -153,7 +153,7 @@ return view.extend({
 		s.anonymous = true;
 
 		o = s.option(form.DynamicList, 'status_interface', _('Status network interfaces'),
-			_('UCI network names queried by the /status command.'));
+			_('UCI network names queried by the /status and /network commands.'));
 		o.datatype = 'uciname';
 		o.default = [ 'wan', 'wan6' ];
 		o.rmempty = false;

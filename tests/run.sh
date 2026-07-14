@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
-# shellcheck disable=SC2034
+# Test doubles are invoked indirectly by runtime functions sourced below.
+# shellcheck disable=SC2034,SC2317
 
 set -u
 
@@ -303,6 +304,28 @@ MOCK_DEVICE_MAC='00:11:22:33:44:55'
 assert_false 'unknown WOL target is rejected' wol_execute_confirmed 123456789 cfg999
 assert_equal 'unknown target never invokes etherwake' '' "$(cat "$MOCK_ETHERWAKE_LOG")"
 
+: >"$MOCK_PING_LOG"
+MOCK_PING_EXIT=0
+export MOCK_PING_EXIT
+wol_collect_device_status
+assert_contains 'device status reports a responding configured target' "$TGBOT_DEVICE_STATUS_TEXT" 'NAS: 在线 (192.168.1.10)'
+assert_equal 'device status uses one bounded ping probe' '-c 1 -W 1 192.168.1.10' "$(cat "$MOCK_PING_LOG")"
+MOCK_PING_EXIT=1
+: >"$MOCK_PING_LOG"
+wol_collect_device_status
+assert_contains 'device status does not overclaim a failed probe as offline' "$TGBOT_DEVICE_STATUS_TEXT" 'NAS: 未响应 (192.168.1.10)'
+MOCK_DEVICE_CHECK_IP=
+: >"$MOCK_PING_LOG"
+wol_collect_device_status
+assert_contains 'device status identifies targets without a check IP' "$TGBOT_DEVICE_STATUS_TEXT" 'NAS: 未配置检测 IP'
+assert_equal 'device status skips ping without a check IP' '' "$(cat "$MOCK_PING_LOG")"
+MOCK_INCLUDE_DEVICE=0
+wol_collect_device_status
+assert_contains 'device status handles an empty target list' "$TGBOT_DEVICE_STATUS_TEXT" '没有可用的 WOL 设备。'
+MOCK_INCLUDE_DEVICE=1
+MOCK_DEVICE_CHECK_IP='192.168.1.10'
+MOCK_PING_EXIT=0
+
 tgbot_collect_status
 assert_contains 'status includes board model' "$TGBOT_STATUS_TEXT" 'Airoha AN7581'
 assert_contains 'status includes firmware revision' "$TGBOT_STATUS_TEXT" 'r1804-2a845ee80c'
@@ -311,12 +334,82 @@ assert_contains 'status includes WAN address' "$TGBOT_STATUS_TEXT" '198.51.100.1
 assert_contains 'status includes WAN IPv6 address' "$TGBOT_STATUS_TEXT" '2001:db8::10'
 assert_contains 'status degrades unavailable WAN6 to offline' "$TGBOT_STATUS_TEXT" 'wan6: 离线'
 
+: >"$MOCK_PING_LOG"
+tgbot_collect_network
+assert_contains 'network diagnostics include the configured protocol' "$TGBOT_NETWORK_TEXT" '协议: pppoe'
+assert_contains 'network diagnostics include the L3 device' "$TGBOT_NETWORK_TEXT" '设备: pppoe-wan'
+assert_contains 'network diagnostics include both default gateways' "$TGBOT_NETWORK_TEXT" '198.51.100.1, 2001:db8::1'
+assert_contains 'network diagnostics include configured DNS servers' "$TGBOT_NETWORK_TEXT" '1.1.1.1, 2606:4700:4700::1111'
+assert_contains 'network diagnostics report a responding IPv4 gateway' "$TGBOT_NETWORK_TEXT" 'IPv4 可达'
+assert_equal 'network diagnostics use one bounded gateway probe' '-c 1 -W 1 198.51.100.1' "$(cat "$MOCK_PING_LOG")"
+MOCK_PING_EXIT=1
+tgbot_collect_network
+assert_contains 'network diagnostics report a nonresponding gateway cautiously' "$TGBOT_NETWORK_TEXT" 'IPv4 未响应'
+MOCK_PING_EXIT=0
+MOCK_STATUS_INTERFACES=missing
+tgbot_load_config
+tgbot_collect_network
+assert_contains 'network diagnostics degrade an unavailable interface' "$TGBOT_NETWORK_TEXT" 'missing: 不可用'
+MOCK_STATUS_INTERFACES='wan wan6'
+tgbot_load_config
+
 TGBOT_SOURCE_ONLY=1
 export TGBOT_SOURCE_ONLY
 # shellcheck source=/dev/null
 . "$ROOT/tgbot/files/usr/libexec/tgbot/tgbotd"
 assert_equal 'retry backoff doubles below cap' 16 "$(tgbot_backoff_next 8)"
 assert_equal 'retry backoff is capped' 60 "$(tgbot_backoff_next 60)"
+
+menu_log="$TMP_ROOT/menu.log"
+(
+	: >"$menu_log"
+	json_add_string() { printf '%s=%s\n' "$1" "$2" >>"$menu_log"; }
+	telegram_submit_payload() { return 0; }
+	tgbot_send_menu 123456789
+)
+assert_contains 'menu contains the fixed status action' "$(cat "$menu_log")" 'callback_data=menu:status'
+assert_contains 'menu contains the fixed device action' "$(cat "$menu_log")" 'callback_data=menu:devices'
+assert_contains 'menu contains the fixed network action' "$(cat "$menu_log")" 'callback_data=menu:network'
+assert_contains 'menu contains the fixed WOL action' "$(cat "$menu_log")" 'callback_data=menu:wol'
+
+command_log="$TMP_ROOT/commands.log"
+(
+	: >"$command_log"
+	tgbot_dispatch_action() { printf '%s\n' "$1" >>"$command_log"; }
+	tgbot_send_help() { printf '%s\n' help >>"$command_log"; }
+	TGBOT_CHAT_ID=123456789
+	TGBOT_MESSAGE_TEXT=/start; tgbot_dispatch_message
+	TGBOT_MESSAGE_TEXT=/menu; tgbot_dispatch_message
+	TGBOT_MESSAGE_TEXT=/status; tgbot_dispatch_message
+	TGBOT_MESSAGE_TEXT=/devices; tgbot_dispatch_message
+	TGBOT_MESSAGE_TEXT=/network; tgbot_dispatch_message
+	TGBOT_MESSAGE_TEXT=/wol; tgbot_dispatch_message
+	TGBOT_MESSAGE_TEXT=/help; tgbot_dispatch_message
+)
+assert_equal 'text commands converge on the fixed action dispatcher' 'menu
+menu
+status
+devices
+network
+wol
+help' "$(cat "$command_log")"
+
+menu_callback_log="$TMP_ROOT/menu-callback.log"
+(
+	: >"$menu_callback_log"
+	telegram_answer_callback() { printf 'answer:%s\n' "$2" >>"$menu_callback_log"; }
+	tgbot_dispatch_action() { printf 'action:%s\n' "$1" >>"$menu_callback_log"; }
+	tgbot_dispatch_callback callback-menu menu:network 123456789 123456789
+)
+assert_equal 'menu callbacks converge on the same action dispatcher' 'answer:正在处理。
+action:network' "$(cat "$menu_callback_log")"
+(
+	: >"$menu_callback_log"
+	telegram_answer_callback() { printf 'answer:%s\n' "$2" >>"$menu_callback_log"; }
+	tgbot_dispatch_action() { printf 'action:%s\n' "$1" >>"$menu_callback_log"; }
+	tgbot_dispatch_callback callback-menu menu:network:extra 123456789 123456789
+)
+assert_equal 'unknown menu callback data never reaches an action' 'answer:不支持或已失效的操作。' "$(cat "$menu_callback_log")"
 
 tgbot_log() { :; }
 dispatch_count=0

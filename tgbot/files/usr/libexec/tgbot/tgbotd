@@ -40,25 +40,95 @@ tgbot_write_offset() {
 
 tgbot_send_help() {
 	telegram_send_text "$1" '可用命令：
+/menu - 打开快捷菜单
 /status - 查看路由器状态
+/devices - 查看已配置设备状态
+/network - 查看本地网络诊断
 /wol - 选择并唤醒已配置设备
 /help - 显示帮助'
+}
+
+_tgbot_add_menu_button() {
+	json_add_object ''
+	json_add_string text "$1"
+	json_add_string callback_data "menu:$2"
+	json_close_object
+}
+
+tgbot_send_menu() {
+	local chat_id="$1" payload rc=0
+	payload=$(telegram_new_payload_file) || return 1
+	json_init
+	json_add_string chat_id "$chat_id"
+	json_add_string text '请选择操作：'
+	json_add_object reply_markup
+	json_add_array inline_keyboard
+	json_add_array ''
+	_tgbot_add_menu_button '路由器状态' status
+	_tgbot_add_menu_button '设备状态' devices
+	json_close_array
+	json_add_array ''
+	_tgbot_add_menu_button '网络诊断' network
+	_tgbot_add_menu_button '唤醒设备' wol
+	json_close_array
+	json_close_array
+	json_close_object
+	json_dump >"$payload"
+	telegram_submit_payload sendMessage "$payload" || rc=1
+	rm -f "$payload"
+	return "$rc"
+}
+
+tgbot_dispatch_action() {
+	local action="$1" chat_id="$2"
+	case "$action" in
+		menu) tgbot_send_menu "$chat_id" ;;
+		status)
+			if tgbot_collect_status; then
+				telegram_send_text "$chat_id" "$TGBOT_STATUS_TEXT"
+			else
+				telegram_send_text "$chat_id" '无法读取路由器状态。'
+			fi
+			;;
+		devices) wol_send_device_status "$chat_id" ;;
+		network)
+			if tgbot_collect_network; then
+				telegram_send_text "$chat_id" "$TGBOT_NETWORK_TEXT"
+			else
+				telegram_send_text "$chat_id" '无法读取网络状态。'
+			fi
+			;;
+		wol) wol_send_target_keyboard "$chat_id" ;;
+		*) return 1 ;;
+	esac
 }
 
 tgbot_dispatch_message() {
 	local command="${TGBOT_MESSAGE_TEXT%%[[:space:]]*}"
 	case "$command" in
-		/start|/help) tgbot_send_help "$TGBOT_CHAT_ID" ;;
-		/status)
-			if tgbot_collect_status; then
-				telegram_send_text "$TGBOT_CHAT_ID" "$TGBOT_STATUS_TEXT"
-			else
-				telegram_send_text "$TGBOT_CHAT_ID" '无法读取路由器状态。'
-			fi
-			;;
-		/wol) wol_send_target_keyboard "$TGBOT_CHAT_ID" ;;
+		/start|/menu) tgbot_dispatch_action menu "$TGBOT_CHAT_ID" ;;
+		/help) tgbot_send_help "$TGBOT_CHAT_ID" ;;
+		/status) tgbot_dispatch_action status "$TGBOT_CHAT_ID" ;;
+		/devices) tgbot_dispatch_action devices "$TGBOT_CHAT_ID" ;;
+		/network) tgbot_dispatch_action network "$TGBOT_CHAT_ID" ;;
+		/wol) tgbot_dispatch_action wol "$TGBOT_CHAT_ID" ;;
 		'') return 0 ;;
 		*) telegram_send_text "$TGBOT_CHAT_ID" '未知命令，请使用 /help。' ;;
+	esac
+}
+
+tgbot_dispatch_callback() {
+	local callback_id="$1" data="$2" user_id="$3" chat_id="$4" action
+	case "$data" in
+		menu:status|menu:devices|menu:network|menu:wol)
+			action=${data#menu:}
+			telegram_answer_callback "$callback_id" '正在处理。' || true
+			tgbot_dispatch_action "$action" "$chat_id"
+			;;
+		wol_select:*|wol_confirm:*|wol_cancel:*)
+			wol_handle_callback "$callback_id" "$data" "$user_id" "$chat_id"
+			;;
+		*) telegram_answer_callback "$callback_id" '不支持或已失效的操作。' || true ;;
 	esac
 }
 
@@ -69,7 +139,7 @@ tgbot_dispatch_update() {
 	fi
 	case "$TGBOT_UPDATE_KIND" in
 		message) tgbot_dispatch_message ;;
-		callback) wol_handle_callback "$TGBOT_CALLBACK_ID" "$TGBOT_CALLBACK_DATA" "$TGBOT_USER_ID" "$TGBOT_CHAT_ID" ;;
+		callback) tgbot_dispatch_callback "$TGBOT_CALLBACK_ID" "$TGBOT_CALLBACK_DATA" "$TGBOT_USER_ID" "$TGBOT_CHAT_ID" ;;
 	esac
 }
 

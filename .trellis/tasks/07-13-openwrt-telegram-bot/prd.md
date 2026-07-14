@@ -3,8 +3,9 @@
 ## Goal
 
 Build a Telegram bot that runs on an OpenWrt router and lets its owner or
-administrators wake configured LAN devices through `etherwake` and inspect the
-router's current status.
+administrators wake configured LAN devices through `etherwake`, inspect the
+router's current status, check configured-device reachability, and view local
+network diagnostics.
 
 ## User Value
 
@@ -62,6 +63,9 @@ router's current status.
   `libubox`/`jshn`, `ubus`, `uci`, `etherwake`, and `coreutils-od`. The target's
   custom BusyBox configuration does not provide `od`; the LuCI frontend uses
   modern LuCI JavaScript.
+- The next command increment is `/menu`, `/devices`, and `/network`. It reuses
+  the existing WOL target allowlist and configured status interfaces; it does
+  not scan arbitrary LAN clients or call external diagnostic services.
 
 ## Requirements
 
@@ -98,8 +102,21 @@ router's current status.
 - The Telegram Bot API base URL must be configurable and default to
   `https://api.telegram.org`; requests must preserve the standard Telegram Bot
   API method-path contract under the configured base URL.
-- The MVP Telegram command set is `/start`, `/help`, `/status`, and `/wol`, plus
-  the inline callbacks required for WOL selection, confirmation, and cancel.
+- The Telegram command set is `/start`, `/help`, `/menu`, `/status`, `/devices`,
+  `/network`, and `/wol`, plus fixed inline callbacks for the menu and for WOL
+  selection, confirmation, and cancel.
+- `/menu` must present fixed buttons for status, configured-device reachability,
+  local network diagnostics, and WOL. Menu callbacks must pass through the same
+  private-chat and administrator authorization as text commands and dispatch
+  through the same action handlers.
+- `/devices` must list only valid enabled WOL targets. A target with a configured
+  check IP receives one bounded ping probe and is reported as online or not
+  responding; a target without a check IP is reported as not configured for
+  reachability. The command must not enumerate DHCP leases or scan the LAN.
+- `/network` must report each configured status interface's local `ubus` state,
+  protocol, L3 device, addresses, default gateways, and DNS servers when
+  available. It may perform one bounded IPv4 default-gateway ping but must not
+  call an external public-IP, DNS, or connectivity service.
 - Secrets must not appear in process logs or command output.
 - The solution must not require exposing a new inbound router port.
 - The core bot must remain installable and operable without LuCI.
@@ -141,6 +158,12 @@ Distribution is confirmed as feed-compatible package source producing native
       and connectivity fields without changing router state.
 - [ ] `/status` fits the agreed fields into one readable Telegram message and
       labels unsupported or unavailable metrics without failing the command.
+- [ ] `/menu` exposes only fixed known actions, and its authorized callbacks
+      produce the same results as their corresponding text commands.
+- [ ] `/devices` reports enabled configured targets without LAN scanning and
+      distinguishes online, no response, and missing check-IP states.
+- [ ] `/network` reports configured-interface details from local OpenWrt data,
+      bounds its gateway probe, and degrades missing fields without failing.
 - [ ] An unauthorized user cannot read router data or execute router actions.
 - [ ] Authorization uses `from.id` rather than usernames, and every command and
       callback path independently enforces both private-chat and administrator

@@ -57,7 +57,17 @@
     failures, callbacks, backoff, and secret/shell-injection regressions.
   - Add LuCI JS/JSON/catalog syntax checks and package file-layout assertions.
 
-- [ ] 9. Verify both OpenWrt package generations. (Partially complete.)
+- [x] 9. Add the approved read-only command increment.
+  - Add `/menu` with fixed inline actions that converge with text-command
+    dispatch after the existing authorization gate.
+  - Add `/devices` over valid enabled WOL targets with one bounded optional
+    check-IP probe and no LAN scanning.
+  - Add `/network` over configured status interfaces with local `ubus` details
+    and one bounded IPv4 default-gateway probe.
+  - Extend shell mocks and regressions for exact routing, graceful missing data,
+    probe bounds, and menu callback authorization.
+
+- [ ] 10. Verify both OpenWrt package generations. (Partially complete.)
   - Build `.apk` with the matching `2a845ee80c` APK-based source/SDK.
   - Build `.ipk` with an OpenWrt 24.10 SDK from the same package sources.
   - Inspect package metadata, architecture `all`, dependencies, permissions,
@@ -68,9 +78,10 @@
   - [ ] Reproduce the APK build with a matching `2a845ee80c` SDK/buildroot. The
     vendor releases publish firmware images but do not publish that SDK.
 
-- [ ] 10. Run integration and release review.
+- [ ] 11. Run integration and release review.
   - Install locally built packages on the target router, configure while
-    disabled, test the custom API base, then enable and verify `/status`.
+    disabled, test the custom API base, then enable and verify `/menu`,
+    `/status`, `/devices`, and `/network`.
   - Test authorized/unauthorized private and group updates, WOL cancel,
     confirmation expiry/reuse, actual magic-packet delivery, and optional ping.
   - Reboot/restart the router to verify `procd`, backlog handling, conffile
@@ -78,12 +89,17 @@
 
 ## Current Verification Status
 
-- 75 regression tests pass with the host `sh` and with BusyBox `ash` plus
+- 96 regression tests pass with the host `sh` and with BusyBox `ash` plus
   BusyBox applets.
 - ShellCheck, LuCI JavaScript syntax, JSON manifests, translation/catalog
   checks, and package layout checks pass.
-- Telegram request JSON was exercised with OpenWrt's real `jshn.sh`.
+- Telegram request JSON, including the fixed action menu, was exercised with
+  OpenWrt's real `jshn.sh`.
+- Default-route and DNS JSONPath expressions pass with the native OpenWrt
+  25.12.5 and 24.10.7 `jsonfilter` binaries.
 - The LuCI RPC ucode compiles with OpenWrt 25.12.5 and 24.10.7 runtimes.
+- Core, LuCI, and Simplified Chinese packages build in both SDKs with the same
+  explicit `0.2.0-r1` version and native `noarch`/`all` metadata.
 - Final APK and IPK packages are staged under ignored `dist/` directories with
   `dist/SHA256SUMS` for target-router transfer.
 - Exact-source inspection at vendor commit `2a845ee80c` confirms matching

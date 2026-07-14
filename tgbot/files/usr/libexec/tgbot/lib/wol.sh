@@ -5,8 +5,8 @@
 TGBOT_RUNTIME_DIR=${TGBOT_RUNTIME_DIR:-/tmp/tgbot}
 TGBOT_CONFIRM_DIR=${TGBOT_CONFIRM_DIR:-$TGBOT_RUNTIME_DIR/confirm}
 TGBOT_ETHERWAKE_BIN=${TGBOT_ETHERWAKE_BIN:-/usr/bin/etherwake}
-TGBOT_PING_BIN=${TGBOT_PING_BIN:-ping}
 TGBOT_SLEEP_BIN=${TGBOT_SLEEP_BIN:-sleep}
+TGBOT_DEVICE_STATUS_LIMIT=${TGBOT_DEVICE_STATUS_LIMIT:-20}
 
 wol_reset_confirmation_state() {
 	local file
@@ -155,15 +155,58 @@ wol_send_confirmation() {
 	return "$rc"
 }
 
+wol_ping_once() {
+	"$TGBOT_PING_BIN" -c 1 -W 1 "$1" >/dev/null 2>&1
+}
+
 wol_check_reachable() {
 	local ip="$1" attempt=1
 	"$TGBOT_SLEEP_BIN" "$TGBOT_WAKE_CHECK_DELAY"
 	while [ "$attempt" -le "$TGBOT_WAKE_CHECK_ATTEMPTS" ]; do
-		"$TGBOT_PING_BIN" -c 1 -W 1 "$ip" >/dev/null 2>&1 && return 0
+		wol_ping_once "$ip" && return 0
 		[ "$attempt" -eq "$TGBOT_WAKE_CHECK_ATTEMPTS" ] || "$TGBOT_SLEEP_BIN" "$TGBOT_WAKE_CHECK_INTERVAL"
 		attempt=$((attempt + 1))
 	done
 	return 1
+}
+
+_wol_append_device_status() {
+	local section="$1" state
+	if ! tgbot_load_device "$section" || ! tgbot_validate_loaded_device; then
+		return 0
+	fi
+	TGBOT_DEVICE_STATUS_TOTAL=$((TGBOT_DEVICE_STATUS_TOTAL + 1))
+	[ "$TGBOT_DEVICE_STATUS_TOTAL" -le "$TGBOT_DEVICE_STATUS_LIMIT" ] || return 0
+
+	if [ -z "$TGBOT_DEVICE_CHECK_IP" ]; then
+		state='未配置检测 IP'
+	elif wol_ping_once "$TGBOT_DEVICE_CHECK_IP"; then
+		state="在线 ($TGBOT_DEVICE_CHECK_IP)"
+	else
+		state="未响应 ($TGBOT_DEVICE_CHECK_IP)"
+	fi
+	TGBOT_DEVICE_STATUS_TEXT="${TGBOT_DEVICE_STATUS_TEXT}
+$TGBOT_DEVICE_NAME: $state"
+	return 0
+}
+
+wol_collect_device_status() {
+	TGBOT_DEVICE_STATUS_TEXT='设备状态'
+	TGBOT_DEVICE_STATUS_TOTAL=0
+	config_foreach _wol_append_device_status device
+	if [ "$TGBOT_DEVICE_STATUS_TOTAL" -eq 0 ]; then
+		TGBOT_DEVICE_STATUS_TEXT="${TGBOT_DEVICE_STATUS_TEXT}
+没有可用的 WOL 设备。"
+	elif [ "$TGBOT_DEVICE_STATUS_TOTAL" -gt "$TGBOT_DEVICE_STATUS_LIMIT" ]; then
+		TGBOT_DEVICE_STATUS_TEXT="${TGBOT_DEVICE_STATUS_TEXT}
+仅显示前 $TGBOT_DEVICE_STATUS_LIMIT 个设备。"
+	fi
+	return 0
+}
+
+wol_send_device_status() {
+	wol_collect_device_status || return 1
+	telegram_send_text "$1" "$TGBOT_DEVICE_STATUS_TEXT"
 }
 
 wol_execute_confirmed() {

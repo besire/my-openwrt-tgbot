@@ -4,6 +4,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=kochiya
+PKG_VERSION:=0.2.0
+PKG_RELEASE:=1
+PKG_PO_VERSION:=0.2.0-r1
 
 LUCI_TITLE:=LuCI support for the OpenWrt Telegram bot
 LUCI_DEPENDS:=+luci-base +tgbot

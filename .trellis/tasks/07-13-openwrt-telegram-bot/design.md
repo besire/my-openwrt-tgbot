@@ -5,7 +5,7 @@
 The project is an OpenWrt feed containing two architecture-independent packages:
 
 - `tgbot`: BusyBox `ash` runtime, UCI schema, `procd` service, safe helpers, and
-  Telegram/WOL/status behavior.
+  Telegram WOL, status, reachability, and network-diagnostic behavior.
 - `luci-app-tgbot`: modern LuCI JavaScript configuration and service UI. It
   depends on `tgbot`; the core package does not depend on LuCI.
 
@@ -19,7 +19,8 @@ Telegram Bot API or configured compatible reverse proxy
                          ^
                          | outbound HTTPS long polling and method calls
                          v
-procd -> tgbot daemon -> auth/dispatch -> status collectors
+procd -> tgbot daemon -> auth/dispatch -> status/network collectors
+                         |             -> configured-device reachability
                          |             -> WOL confirmation -> etherwake -> ping
                          v
                     /etc/config/tgbot
@@ -128,6 +129,11 @@ Unsupported and unauthorized updates cannot reach status or WOL functions.
 Logs may record a reason and numeric update ID at an appropriate level, but not
 message text, token, administrator lists, or response bodies.
 
+Text commands and fixed `menu:<action>` callbacks converge on one exact-match
+action dispatcher. `/start` and `/menu` render a fixed inline keyboard for
+status, configured-device reachability, network diagnostics, and WOL. The
+dispatcher never evaluates callback data or accepts an arbitrary method name.
+
 ## WOL Flow
 
 1. `/wol` reloads valid enabled UCI devices and sends an inline target keyboard.
@@ -165,6 +171,24 @@ No external public-IP or hardware-information service is called. Each collector
 returns a normalized value or unavailable marker; the formatter does not parse
 raw `ubus` payloads.
 
+## Configured Device Reachability
+
+`/devices` iterates the same valid enabled UCI device sections used by `/wol`.
+For each target, it displays the configured name and optional check IP. A target
+with a check IP receives exactly one `ping -c 1 -W 1` probe; failure is reported
+as no response rather than proof that the host is offline. Targets without a
+check IP are reported as not configured for checking. The command does not read
+DHCP leases, neighbor tables, or probe addresses outside the allowlist.
+
+## Local Network Diagnostics
+
+`/network` queries the existing `status_interface` list through
+`ubus call network.interface.<name> status`. It reports interface state,
+protocol, L3 device, assigned addresses, default IPv4/IPv6 gateways, and DNS
+servers when present. One bounded IPv4 default-gateway ping adds a local
+reachability result. Missing interfaces or fields are nonfatal, and no external
+connectivity or public-IP service is contacted.
+
 ## LuCI Application
 
 The app appears under Services and uses native LuCI `form`, `uci`, `rpc`, `poll`,
@@ -193,6 +217,8 @@ grant a generic shell. English source labels are translated by `po/zh_Hans`.
   `ping`, `tr`, and basic filesystem tools. `od` is explicit because the
   reference firmware's custom BusyBox configuration disables that applet.
 - `luci-app-tgbot` depends on `tgbot` and modern `luci-base`.
+- Core, LuCI, and translation packages use the same explicit semantic version
+  and OpenWrt release suffix instead of LuCI's generated timestamp/hash form.
 - The service is installed disabled. Installation never starts network activity
   before a user supplies valid configuration and explicitly enables it.
 - Locally built unsigned packages require either a trusted repository signing

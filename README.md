@@ -101,6 +101,19 @@ verification is always enabled.
 - The bot token is not passed through process arguments or logs.
 - The LuCI ACL exposes fixed bot operations, not a generic shell.
 
+## Telegram Commands
+
+- `/start` and `/menu`: open a fixed inline menu for the supported actions.
+- `/status`: report router health, storage, temperature, and configured WAN
+  interface state.
+- `/devices`: probe only enabled WOL targets that have a configured check IP;
+  it does not scan DHCP leases or the LAN.
+- `/network`: report local `ubus` interface, address, default-gateway, and DNS
+  data, with one bounded IPv4 gateway probe and no external diagnostic service.
+- `/wol`: select an enabled target and require a fresh confirmation before
+  sending its magic packet.
+- `/help`: show the command list.
+
 ## Development Checks
 
 ```sh

@@ -13,6 +13,10 @@ _status_json_get() {
 	"$TGBOT_JSONFILTER_BIN" -i "$1" -e "$2" 2>/dev/null
 }
 
+_status_join_values() {
+	awk 'NF { if (out != "") out = out ", "; out = out $0 } END { print out }'
+}
+
 _status_human_kib() {
 	awk -v kib="$1" 'BEGIN {
 		if (kib >= 1048576) printf "%.1f GiB", kib / 1048576
@@ -66,7 +70,8 @@ _status_temperature() {
 }
 
 _status_network_line() {
-	local network="$1" file up ipv4 ipv6 addresses state
+	local network="$1" mode="${2:-summary}" file up ipv4 ipv6 addresses state
+	local proto device gateway4 gateway6 gateways dns probe=''
 	file=$(mktemp "$TGBOT_RUNTIME_DIR/network.XXXXXX") || return 1
 	if ! "$TGBOT_UBUS_BIN" call "network.interface.$network" status >"$file" 2>/dev/null; then
 		rm -f "$file"
@@ -76,10 +81,37 @@ _status_network_line() {
 	up=$(_status_json_get "$file" '@.up')
 	ipv4=$(_status_json_get "$file" "@['ipv4-address'][*].address")
 	ipv6=$(_status_json_get "$file" "@['ipv6-address'][*].address")
-	addresses=$(printf '%s\n%s\n' "$ipv4" "$ipv6" | awk 'NF { if (out != "") out = out ", "; out = out $0 } END { print out }')
-	rm -f "$file"
+	addresses=$(printf '%s\n%s\n' "$ipv4" "$ipv6" | _status_join_values)
 	case "$up" in true|1) state='在线' ;; *) state='离线' ;; esac
-	[ -z "$addresses" ] && printf '%s: %s\n' "$network" "$state" || printf '%s: %s (%s)\n' "$network" "$state" "$addresses"
+
+	if [ "$mode" != diagnostic ]; then
+		rm -f "$file"
+		[ -z "$addresses" ] && printf '%s: %s\n' "$network" "$state" || printf '%s: %s (%s)\n' "$network" "$state" "$addresses"
+		return 0
+	fi
+
+	proto=$(_status_json_get "$file" '@.proto')
+	device=$(_status_json_get "$file" '@.l3_device')
+	gateway4=$(_status_json_get "$file" '@.route[@.target="0.0.0.0" && @.mask=0].nexthop')
+	gateway6=$(_status_json_get "$file" '@.route[@.target="::" && @.mask=0].nexthop')
+	gateways=$(printf '%s\n%s\n' "$gateway4" "$gateway6" | _status_join_values)
+	dns=$(_status_json_get "$file" '@["dns-server"][*]' | _status_join_values)
+	rm -f "$file"
+
+	if [ "$state" = 在线 ] && tgbot_is_ipv4 "$gateway4"; then
+		if "$TGBOT_PING_BIN" -c 1 -W 1 "$gateway4" >/dev/null 2>&1; then
+			probe=' (IPv4 可达)'
+		else
+			probe=' (IPv4 未响应)'
+		fi
+	fi
+	[ -n "$proto" ] || proto='不可用'
+	[ -n "$device" ] || device='不可用'
+	[ -n "$addresses" ] || addresses='不可用'
+	[ -n "$gateways" ] || gateways='不可用'
+	[ -n "$dns" ] || dns='不可用'
+	printf '%s: %s\n  协议: %s\n  设备: %s\n  地址: %s\n  网关: %s%s\n  DNS: %s\n' \
+		"$network" "$state" "$proto" "$device" "$addresses" "$gateways" "$probe" "$dns"
 }
 
 tgbot_collect_status() {
@@ -130,4 +162,14 @@ tgbot_collect_status() {
 	done
 	TGBOT_STATUS_TEXT=$(printf '路由器状态\n设备: %s (%s)\n固件: %s\n运行时间: %s\n负载: %s\n内存: %s\nOverlay: %s\n温度: %s\n%sBot: 运行中' \
 		"$hostname" "$model" "$release" "$uptime" "$load" "$memory" "$overlay" "$temperature" "$networks")
+}
+
+tgbot_collect_network() {
+	local network networks=''
+	for network in $TGBOT_STATUS_INTERFACES; do
+		networks="${networks}$(_status_network_line "$network" diagnostic)
+"
+	done
+	TGBOT_NETWORK_TEXT=$(printf '网络诊断\n%s' "$networks")
+	return 0
 }

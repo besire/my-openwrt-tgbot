@@ -61,8 +61,8 @@ msgstr "状态与可达性"
 msgid "Status network interfaces"
 msgstr "状态查询网络接口"
 
-msgid "UCI network names queried by the /status command."
-msgstr "/status 命令查询的 UCI 网络名称。"
+msgid "UCI network names queried by the /status and /network commands."
+msgstr "/status 和 /network 命令查询的 UCI 网络名称。"
 
 msgid "Initial reachability delay"
 msgstr "首次可达性检测延迟"
