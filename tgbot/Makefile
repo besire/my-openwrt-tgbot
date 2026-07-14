@@ -4,7 +4,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tgbot
 PKG_VERSION:=0.1.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=kochiya
 
@@ -16,7 +16,7 @@ define Package/tgbot
   SUBMENU:=Instant Messaging
   TITLE:=Telegram bot for OpenWrt status and Wake-on-LAN
   URL:=https://github.com/besire/my-openwrt-tgbot
-  DEPENDS:=+ca-bundle +curl +etherwake +jshn +jsonfilter +ubus +uci
+  DEPENDS:=+ca-bundle +coreutils-od +curl +etherwake +jshn +jsonfilter +ubus +uci
   PKGARCH:=all
 endef
 

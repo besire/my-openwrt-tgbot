@@ -189,8 +189,9 @@ grant a generic shell. English source labels are translated by `po/zh_Hans`.
   `apk-tools 3.0.5`.
 - Secondary build reference: OpenWrt 24.10 SDK for `.ipk` compatibility.
 - Core dependencies: `curl`, `ca-bundle`, `jsonfilter`, `libubox`/`jshn`,
-  `ubus`, `uci`, and `etherwake`; BusyBox provides `ash`, `awk`, `ping`, and
-  basic filesystem tools.
+  `ubus`, `uci`, `etherwake`, and `coreutils-od`; BusyBox provides `ash`, `awk`,
+  `ping`, `tr`, and basic filesystem tools. `od` is explicit because the
+  reference firmware's custom BusyBox configuration disables that applet.
 - `luci-app-tgbot` depends on `tgbot` and modern `luci-base`.
 - The service is installed disabled. Installation never starts network activity
   before a user supplies valid configuration and explicitly enables it.

@@ -169,3 +169,70 @@ reset_state() {
     return 0
 }
 ```
+
+## Scenario: Declare Non-Default BusyBox Applet Dependencies
+
+### 1. Scope / Trigger
+
+- Trigger: runtime shell code invokes an external command that is optional in
+  BusyBox or disabled by the reference firmware's BusyBox configuration.
+- This contract prevents host tests and full BusyBox builds from hiding a
+  missing command on a size-optimized OpenWrt target.
+
+### 2. Signatures
+
+- WOL nonce generation invokes `od -An -N12 -tx1 /dev/urandom`.
+- `Package/tgbot` declares `+coreutils-od` in `DEPENDS`.
+- Both APK and IPK metadata expose `coreutils-od` as an install dependency.
+
+### 3. Contracts
+
+- Do not infer target applet availability from the host, a generic BusyBox
+  binary, or BusyBox `ash` syntax-test results.
+- Check the reference firmware's BusyBox configuration for every optional
+  applet used at runtime.
+- When the runtime intentionally uses an optional applet, declare the OpenWrt
+  package that provides it. For this project, `od` is provided by
+  `coreutils-od` on both supported package generations.
+- Keep dependency resolution enabled during installation; `--no-deps` is not a
+  supported installation path.
+
+### 4. Validation & Error Matrix
+
+| Condition | Required result |
+| --- | --- |
+| Target BusyBox includes `od` | Package remains valid; explicit provider is harmless |
+| Target BusyBox omits `od` | Package manager installs `coreutils-od` |
+| `coreutils-od` is absent from package metadata | Reject release; WOL confirmation cannot be created |
+| SDK cannot resolve `coreutils-od` | Build fails rather than shipping an incomplete runtime |
+| Package is installed without dependency resolution | Unsupported installation method |
+
+### 5. Good / Base / Bad Cases
+
+- Good: installing `tgbot` pulls `coreutils-od`, and selecting a WOL target
+  creates a confirmation nonce.
+- Base: a full BusyBox image already has `od`; the same package still works.
+- Bad: tests pass on a development host with GNU `od`, while the router returns
+  "unable to create confirmation" because its BusyBox applet is disabled.
+
+### 6. Tests Required
+
+- Assert `tgbot/Makefile` contains `+coreutils-od` in the package dependency
+  declaration.
+- Build with both APK and IPK SDKs and inspect final native metadata.
+- On the reference router, install with dependency resolution and exercise WOL
+  selection through confirmation creation.
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```make
+DEPENDS:=+ca-bundle +curl +etherwake
+```
+
+#### Correct
+
+```make
+DEPENDS:=+ca-bundle +coreutils-od +curl +etherwake
+```

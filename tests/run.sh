@@ -166,6 +166,8 @@ run_apply() (
 
 printf 'TAP version 13\n'
 
+assert_true 'core package declares the od runtime dependency' \
+	grep -Eq '^  DEPENDS:=.*[+]coreutils-od([[:space:]]|$)' "$ROOT/tgbot/Makefile"
 assert_true 'valid IPv4 is accepted' tgbot_is_ipv4 '192.168.1.10'
 assert_false 'out-of-range IPv4 is rejected' tgbot_is_ipv4 '256.1.1.1'
 assert_true 'valid custom HTTPS API URL is accepted' tgbot_is_https_url 'https://relay.example/tg'

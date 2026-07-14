@@ -59,8 +59,9 @@ router's current status.
   state and assigned interface addresses, and bot service state.
 - The bot runtime is BusyBox `ash`; Python is not part of the first release.
 - The core runtime dependencies are `curl`, `jsonfilter`, `ca-bundle`,
-  `libubox`/`jshn`, `ubus`, `uci`, and `etherwake`. The LuCI frontend uses modern
-  LuCI JavaScript.
+  `libubox`/`jshn`, `ubus`, `uci`, `etherwake`, and `coreutils-od`. The target's
+  custom BusyBox configuration does not provide `od`; the LuCI frontend uses
+  modern LuCI JavaScript.
 
 ## Requirements
 

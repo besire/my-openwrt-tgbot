@@ -63,6 +63,9 @@ opkg install ./luci-i18n-tgbot-zh-cn_*.ipk
 
 The service is disabled in UCI by default. Configure it under
 **Services > Telegram Bot**, test the API connection, then enable it.
+The core package declares `coreutils-od` because some custom OpenWrt BusyBox
+builds omit the `od` applet used for WOL confirmation nonces; install packages
+with dependency resolution enabled.
 
 LuCI is optional. For a core-only installation, edit `/etc/config/tgbot` while
 the service is disabled, then run:
